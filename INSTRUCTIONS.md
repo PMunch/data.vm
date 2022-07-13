@@ -22,15 +22,15 @@ Jump if less than, compares int A to int in register B, jump to C if less than
 ---111
 Jump if more than, compares int A to int in register B, jump to C if more than
 001
-COPY
+COPY (Maybe drop replacing instructions, have to use delete then insert instead)
 ---000
-Copy raw string to register, no replacement
+Copy raw string B to register A, no replacement
 ---001
-Copy raw int to register, no replacement
+Copy raw int B to register A, no replacement
 ---010
-Copy string from register A to register B, no replacement
+Copy string from register B to register A, no replacement
 ---011
-Copy int from register A to register B, no replacement
+Copy int from register B to register A, no replacement
 ---100
 Copy raw string to register, replacing a string
 ---101
@@ -45,8 +45,10 @@ FOLLOW
 Set up register A to follow address B
 ---0001
 Set up register A to follow address read from register B
+---0010
+Set up register A to follow new chunk
 011
-SKIP
+SKIP (Maybe make part of copy? Copy to void instructions)
 ---000
 Skip string in register A
 ---001
@@ -54,7 +56,7 @@ Skip int in register A
 100
 ARITHMETIC 1
 ---000
-Add number in register A with register B and stores the result in C
+Add number in register B with register C and stores the result in A
 ---001
 Subtract
 ---010
@@ -69,3 +71,5 @@ Deletes string in register A
 Deletes int in register A
 ---010
 Reset counter for register A? (No different from following it again, but might be practical if the original address is hard to get)
+---011
+Writes address of chunk followed by register B into register A (Maybe this could be used instead of reset counter? Get the address and then follow it again)
