@@ -215,7 +215,7 @@ more than 127 values.
 
 ### So, which one is best for a data based VM?
 To the best of my knowledge a VM specifically designed to be easy to implement
-and embed for the sole purpose of persistant data storage has never been built
+and embed for the sole purpose of correct data storage has never been built
 before. So the requirements of such a system is still an open question. The
 SQLite encoding is enticing as it would be possible to have quite a bit larger
 instruction set (the current design has all op-codes defined to fit in a single
@@ -226,18 +226,20 @@ This is certainly something which could be kept in mind if a special algorithm
 is to be designed for this purpose (chunks for example are identified by the
 hash of their name, the current hashing algorithm produces hashes 28 bits long).
 Self-synchronization is a feature which also seems like it would be very nice to
-have, but since the current design for the VM is only addressable by chunks and
+have. But since the current design for the VM is only addressable by chunks and
 sub-chunk addressing has to be done by skipping through the records you should
 never run into a case where you try to e.g. add something to the middle of a
 number. This is also meant for data storage, not data transfer, so picking up a
-stream mid-sending isn't much of a concern. For these reasons the choice will
-likely fall on either Rust vints, SQLite, Dlugosz', or a custom algorithm. Of
+stream mid-sending isn't much of a concern. That being said it also means that
+there is no way to go backwards though the numbers, as there is no way to know
+where the start of the previous number is. For these reasons the choice will
+likely fall on either Rust vints, SQLite, Dlugosz', or a custom algorithm.  Of
 course out of these SQLite is the one which is the most tried and tested, and
-probably the one which has the most existing implementations to steal for anyone
-wanting to implement this VM. Nim for example has a module called varint in the
-standard library which seems to be the SQLite kind. That being said Rust varints
-are very cleverly designed and easy to implement, it also offers the benefit of
-being able to store a 28-bit chunk address in four bytes.
+probably the one which has the most existing implementations to steal for
+anyone wanting to implement this VM. Nim for example has a module called varint
+in the standard library which seems to be the SQLite kind. That being said Rust
+varints are very cleverly designed and easy to implement, it also offers the
+benefit of being able to store a 28-bit chunk address in four bytes.
 
 ## Conclusion
 Depending on your specific use-case each of these could be the best algorithm.

@@ -33,9 +33,10 @@ is designed to be as simple yet flexible as absolutely possible. And the VM
 itself can be implemented completely independent of the specific format.
 
 ## Basic design
-- Every number is encoded as a variable length number
-- Every string is null terminated
+- The base unit is not a byte, but a variable size number
 - Addressing is done based on "atoms"
+- Strings and floats are defined on top of the variable size numbers and have
+  some special considerations in the instructions set
 
 ### Addressing
 The top level of the file format is split into addressable chunks. Each chunk
@@ -49,31 +50,34 @@ would be stored into the file as:
 
 When the address of an atom is looked up, it returns the position for the 0-th
 byte in the chunk data. From there it is possible to traverse or execute the
-data within the chunk. The reader of the data should not attempt to read the
-data stored in chunks. To execute the `hello_world` procedure, simply look up
-the chunk with the `hello_world` atom address and start executing the
-instructions in the chunk.
+data within the chunk. The consumer of the data should not attempt to read the
+data stored in chunks directly, but rather run the correct data aquisition
+procedure according to the format. To execute the `hello_world` procedure,
+simply look up the chunk with the `hello_world` atom address and start
+executing the instructions in the chunk as detailed in the "Execution" chapter.
 
 ### Numbers
-All numbers (and by extension atoms) are stored as signed variable length
-numbers according to the Protobuf Zig-Zag encoding. That is 0 is stored as 0, -1
-is stored as 1, 1 is stored as 2, etc. The bottom seven bits are data, and the
-highest bit is used for whether or not it's the final byte in the number. (Maybe
-have both signed and unsigned numbers? Especially if strings are implemented
-using these as one byte now only stores -63..64 so only half the range will ever
-be used. Same for atoms. Also, how to deal with floating point? Maybe two signed
-numbers, base and power of ten)
+All data is stored as variable length numbers, either unsigned or signed and
+ZigZag encoded. That is 0 is stored as 0, -1 is stored as 1, 1 is stored as 2,
+etc. The encoding is a run-length based one where the first byte stores
+trailing 0 bits with how many more bytes should be read. Floating point numbers
+are stored as two consecutive signed numbers, the base number, and the power of
+ten to raise the number two. This means that 3.14 will be stored as the numbers
+314 and -2 and -31400 will be stored as -314 and 2.
+
+### Instructions
+Instructions are stored as unsigned variable length numbers like everything
+else, but the instruction set is limited to fit in a single byte.
 
 ### Strings
-Strings are stored as null-terminated UTF-8 strings.
-(Store strings as variable length numbers? UTF codepoints instead of
-UTF-8 as numbers? Remove string handling from the VM and introduce memory
-copying instructions instead? Pro: can deal with strings, cons: have to have
-some way of specifying sizes and such?)
+Strings are also stored as variable length numbers, each number signifying a
+Unicode codepoint. This means that to convert it into any of the common UTF
+encodings it is required to read each code-point and encode them. Strings can
+be either null terminated or length encoded, this is up to the program in
+question.
 
 ## Implementing the VM
-
-Once the procedures to create hashes and parse numbers and strings then the
+Once the procedures to create hashes and parse numbers are implemented then the
 actual execution of programs can be done. The VM needs a couple simple things to
 function, namely a table of chunks to do look ups in, an execution pointer, and
 a some data element pointers. The execution pointer is simply a chunk and the

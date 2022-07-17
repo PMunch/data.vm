@@ -1,75 +1,85 @@
 Seven bits total, fits in a single byte using variable length encoding
-First bit, advance register 1=yes, 0=no. Since all numbers are signed, replacement codes can be seen as negative
+First bit, advance register 1=yes, 0=no.
 Three bits, instruction type
 Three bits, instruction subtype
 Arguments are listed alphabetically, A, B, C, etc.
 000
 JUMP
 ---000
-Jump to end, ie. end of procedure
+Jump to end, ie. end of procedure (Maybe have this for data chunks as well?)
 ---001
-Jump unconditonally to A
+Jump unconditonally to A at position B (B should almost always be zero or a value from misc command 011)
 ---010
-Jump if equal, compares string A to string in register B, jumps to C if equal
----011
-Jump if not equal, compares string A to string in register B, jumps to C if not equal
----100
 Jump if equal, compares int A to int in register B, jump to C if equal
----101
-Jump if not equal, compares int A to int in register B, jump to C if not equal
----110
-Jump if less than, compares int A to int in register B, jump to C if less than
----111
-Jump if more than, compares int A to int in register B, jump to C if more than
-001
-COPY (Maybe drop replacing instructions, have to use delete then insert instead)
----000
-Copy raw string B to register A, no replacement
----001
-Copy raw int B to register A, no replacement
----010
-Copy string from register B to register A, no replacement
 ---011
-Copy int from register B to register A, no replacement
+Jump if not equal, compares int A to int in register B, jump to C if not equal
 ---100
-Copy raw string to register, replacing a string
+Jump if less than, compares int A to int in register B, jump to C if less than
 ---101
-Copy raw int to register, replacing an int
+Jump if more than, compares int A to int in register B, jump to C if more than
 ---110
-Copy string from register A to register B, replacing a string
+Jump if less than, compares float A to float in register B, jump to C if less than
 ---111
-Copy int from register A to register B, replacing an int
+Jump if more than, compares float A to float in register B, jump to C if more than
+001
+COPY (If a copy is done into a register which is not at the end of the chunk then data is inserted not overwritten)
+---000
+Copy raw int B to register A
+---001
+Copy int from register B to register A
+---010
+Copy C ints from register B to register A
+---011
+Copy ints from register B to register A until a zero value is found (not a zero byte)
+---011
+Copy B raw ints to register A
+---011
+Copy raw ints to register A until a zero value is found (not a zero byte)
 010
 FOLLOW
----0000
+---000
 Set up register A to follow address B
----0001
+---001
 Set up register A to follow address read from register B
----0010
-Set up register A to follow new chunk
+---010
+Set up register A to follow new chunk (with random address)
 011
 SKIP (Maybe make part of copy? Copy to void instructions)
 ---000
-Skip string in register A
----001
 Skip int in register A
+---001
+Skip B ints in register A
+---010
+Skip ints in register A until a zero value is found (not a zero byte)
 100
 ARITHMETIC 1
 ---000
-Add number in register B with register C and stores the result in A
+Add unsigned number in register B with register C and stores the result in A
 ---001
 Subtract
 ---010
 Multiply
 ---011
 Divide
+---100
+Add signed number in register B with register C and stores the result in A
+---101
+Subtract
+---110
+Multiply
+---111
+Divide
 111
 MISC?
 ---000
-Deletes string in register A
----001
 Deletes int in register A
+---001
+Deletes B ints in register A
 ---010
-Reset counter for register A? (No different from following it again, but might be practical if the original address is hard to get)
+Deletes ints in register A until a zero value is found
 ---011
+Reset counter for register A? (No different from following it again, but might be practical if the original address is hard to get)
+---100
 Writes address of chunk followed by register B into register A (Maybe this could be used instead of reset counter? Get the address and then follow it again)
+---101
+Writes byte position of register B into register A
