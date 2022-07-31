@@ -104,15 +104,6 @@ proc deleteStr*(register: var Register) =
   register.chunk[].delete(was..register.position)
 
 proc atomize*(x: string): uint32 =
-  #result = 0
-  #for c in x:
-  #  let highorder = 0xf8000000'u32 and result
-  #  result = (result shl 5) xor (highorder shr 27)
-  #  result = result xor c.uint32
-  #result = 0
-  #for c in x:
-  #  result *= 31
-  #  result = result xor c.uint32
   result = x.len.uint32 and 0x0fffffff'u32
   for c in x:
     result = (result shl 4) + c.uint32
@@ -135,7 +126,7 @@ proc followChunk(register: var Register, address: SomeInteger = randomAddr()) =
 
 import strutils
 
-proc executeProcedure(x: string, args: seq[byte]) =
+proc executeProcedure(x: string, args: var seq[byte]) =
   var regs = newSeq[Register](127)
   regs[0] = Register(chunk: memory[atomize(x)])
   const procReg = 0.uint
@@ -157,16 +148,23 @@ proc executeProcedure(x: string, args: seq[byte]) =
     echo "Executing command: ", cmd.toBin(8)
     case (cmd and 0b0011_1000) shr 3:
     of 0b000: # Jump instructions
-      var jump = false
+      var
+        jump = false
+        target: uint32
+        position = 0
       case cmd and 0b0000_0111:
       of 0b000:
         let reg = procReg.unsigned
         regs[reg].position = regs[reg].chunk[].len
-      of 0b001: jump = true
+      of 0b001:
+        jump = true
+        target = procReg.unsigned.uint32
+        position = procReg.unsigned.int
       of 0b010..0b111:
         let
           a = procReg.unsigned.number
           b = procReg.unsigned.number
+        target = procReg.unsigned.uint32
         case cmd and 0b0000_0111:
         of 0b010:
           if a == b: jump = true
@@ -181,16 +179,14 @@ proc executeProcedure(x: string, args: seq[byte]) =
         else: discard
       else: discard
       if jump:
-        regs[procReg] = Register(chunk: memory[procReg.unsigned.uint32])
-      if (cmd and 0b000_0111) == 0b001:
-        regs[procReg].position = procReg.unsigned.int
+        regs[procReg] = Register(chunk: memory[target], position: position)
     of 0b001: # Copy instructions
       case cmd and 0b0000_0111:
       of 0b000:
         let
           aReg = procReg.unsigned
           bReg = procReg.unsigned
-        regs[aReg].writeNumber(regs[bReg].readNumber(reset and (bReg != 0), reset and (aReg != 0)))
+        regs[aReg].writeNumber(regs[bReg].readNumber(reset and (bReg != 0)), reset and (aReg != 0))
       of 0b001:
         let
           aReg = procReg.unsigned
@@ -211,8 +207,8 @@ proc executeProcedure(x: string, args: seq[byte]) =
           bWas = regs[bReg].position
         while true:
           let num = regs[bReg].readNumber
-          regs[aReg].writeNumber(num)
           if num == 0: break
+          regs[aReg].writeNumber(num)
         if reset:
           if aReg != 0: regs[aReg].position = aWas
           if bReg != 0: regs[bReg].position = bWas
@@ -276,6 +272,7 @@ proc executeProcedure(x: string, args: seq[byte]) =
         regs[procReg.unsigned].writeNumber(regs[procReg.unsigned].position, reset)
       else: discard
     else: discard
+  args = regs[1].chunk[]
 
 proc executeProcedureStr(x: string, arg: string) =
   var argBytes = newSeqOfCap[byte](arg.len + 1)
@@ -294,6 +291,10 @@ register.writeNumber 2'u # In register 2
 register.writeNumber 0b01_001_010'u # Copy string from register to register
 register.writeNumber 2'u # To register 2
 register.writeNumber 1'u # From register 1
+register.writeNumber 0b01_001_000'u # Copy int from register to register
+register.writeNumber 2'u # To register 2
+register.writeNumber 0'u # From procedure register
+register.writeNumber 0'u # Literal number 0 (to terminate string)
 register.writeNumber 0b01_001_000'u # Copy int to register
 register.writeNumber 2'u # To register 2
 register.writeNumber 0'u # From procedure register
@@ -308,14 +309,119 @@ register.writeNumber 0'u # Read from procedure register
 register.writeNumber atomize("task list")
 register.writeNumber 0b00_111_100'u # Write register address to register
 register.writeNumber 3'u # To register 3
-register.writeNumber 2'u # Address of register 1
+register.writeNumber 2'u # Address of register 2
 
 when false:
-  register.followChunk(atomize("get tasks"))
-  register.writeNumber 
-  register.writeNumber 0b00_010_000 # Follow given chunk
-  register.writeNumber 1 # In register 2
-  register.writeNumber atomize("task list")
+  import macros
+
+  macro datavm(y: string, x: untyped): untyped =
+    echo x.treeRepr
+    let register = genSym(nskVar, "register")
+    result = quote do:
+      var `register`: Register
+      `register`.followChunk(atomize(`y`))
+    for command in x:
+      case $command[0]:
+      of "jumpToEnd", "jen":
+        let arg = command[1].intVal.uint64
+        result.add quote do:
+          `register`.writeNumber 0b00_000_000'u
+          `register`.writeNumber `arg`
+      of "jumpTo", "jum": discard
+      of "jumpEquals", "jeq": discard
+      of "jumpNotEquals", "jne": discard
+      of "jumpLessThan", "jlt": discard
+      of "jumpMoreThan", "jmt": discard
+      of "copyInt", "cit": discard
+      of "copyN", "cni": discard
+      of "copyString", "cst": discard
+      of "follow", "flw": discard
+      of "followNew", "fln": discard
+      of "skipInt", "sit": discard
+      of "skipN", "sni": discard
+      of "skipString", "sst": discard
+      of "add": discard
+      of "subtract", "sub": discard
+      of "multiply", "mul": discard
+      of "divide", "div": discard
+      of "deleteInt", "dit": discard
+      of "deleteN", "dni": discard
+      of "deleteString", "dst": discard
+      of "resetRegister", "rrg": discard
+      of "putAddress", "pad": discard
+      of "putPosition", "ppo": discard
+      else: raise newException(ValueError, "Unknown command: " & $command[0])
+
+  datavm("get tasks"):
+    followNew 2
+    copyString 2, 1
+    copyInt 2, !0
+    copyInt 2, !0
+    follow 3, !"task list"
+    putAddress 3, 2
+
+register.followChunk(atomize("get tasks"))
+register.writeNumber 0b01_001_000'u # Copy number
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeNumber 91'u # Character
+register.writeNumber 0b00_010_000'u # Follow given chunk
+register.writeNumber 2'u # In register 2
+register.writeNumber 0'u # From this register
+register.writeNumber atomize("task list")
+register.writeNumber 0b00_000_010'u # Jump if equal, don't advance
+register.writeNumber 2'u # Number in task list
+register.writeNumber 0'u # Number from this register
+register.writeNumber 0'u # Zero value, end-of-list
+register.writeNumber atomize("get tasks end")
+register.writeNumber 0b00_000_001'u # Jump to chunk
+register.writeNumber atomize("get tasks loop")
+register.writeNumber 0'u # At position 0
+
+register.followChunk(atomize("get tasks loop"))
+register.writeNumber 0b01_010_000'u # Follow read chunk
+register.writeNumber 3'u # In register 3
+register.writeNumber 2'u # From register 2 (set up to track task list)
+register.writeNumber 0b01_001_010'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeString "{\"name\":\""
+register.writeNumber 0b01_001_010'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 3'u # From register 3
+register.writeNumber 0b01_001_010'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeString "\"}"
+register.writeNumber 0b01_011_001'u # Skip ints
+register.writeNumber 3'u # In register 3
+register.writeNumber 2'u # 2 numbers
+register.writeNumber 0b00_000_010'u # Jump if equal, don't advance
+register.writeNumber 2'u # Number in task list
+register.writeNumber 0'u # Number from this register
+register.writeNumber 0'u # Zero value, end-of-list
+register.writeNumber atomize("get tasks end")
+register.writeNumber 0b01_001_010'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeString ","
+register.writeNumber 0b00_000_001'u # Jump to register
+register.writeNumber atomize("get tasks loop")
+register.writeNumber 0'u # At position 0
+
+register.followChunk(atomize("get tasks end"))
+register.writeNumber 0b01_001_010'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeString "]"
+register.writeNumber 0b01_001_000'u # Copy string
+register.writeNumber 1'u # To output register
+register.writeNumber 0'u # From this register
+register.writeNumber 0'u
+
+# TODO: Implement the rest of this function
+# TODO: Write macro for parsing an assembly language
+# TODO: Write better procedure for calling and getting return value from procs
 
 listRegister.followChunk(atomize("task list"))
 listRegister.writeNumber 0'u
@@ -352,3 +458,10 @@ for address, chunk in memory:
   size += chunk[].len
 
 echo "Final size: ", size
+
+var returnVal: seq[byte]
+executeProcedure("get tasks", returnVal)
+echo returnVal
+register.position = 0
+register.chunk[] = returnVal
+echo register.readString

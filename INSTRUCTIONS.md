@@ -1,5 +1,5 @@
 Seven bits total, fits in a single byte using variable length encoding
-First bit, advance register 1=yes, 0=no.
+First bit, advance register 1=yes, 0=no (Maybe move this into the register number instead? Lowers the amount of available registers to 64, but means that registers can be individually advanced or not and handling for the procedure register doesn't have to be special)
 Three bits, instruction type
 Three bits, instruction subtype
 Arguments are listed alphabetically, A, B, C, etc.
@@ -24,17 +24,11 @@ Jump if more than, compares float A to float in register B, jump to C if more th
 001
 COPY (If a copy is done into a register which is not at the end of the chunk then data is inserted not overwritten)
 ---000
-Copy raw int B to register A
----001
 Copy int from register B to register A
----010
+---001
 Copy C ints from register B to register A
----011
+---010
 Copy ints from register B to register A until a zero value is found (not a zero byte)
----011
-Copy B raw ints to register A
----011
-Copy raw ints to register A until a zero value is found (not a zero byte)
 010
 FOLLOW
 ---000
