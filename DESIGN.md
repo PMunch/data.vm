@@ -9,28 +9,29 @@ items are simply stored as fields, and there exists a rule that when marking a
 task as done the completion time field should be populated. This is all well and
 good for our simple application. But if someone else wanted to write a mobile
 client for this format we would run into trouble. If the mobile developer didn't
-implement the rule that the done field should be set when a task is done it
-might break our application. But maybe they implement the only rule we had in
-place and everything was fine. Now consider that we add a new state along with
-done and not done called blocking along with a field of which task this task is
-blocked by. If we simply add this into our application the mobile application
-might break because there are now unexpected fields. And we've just added a new
-rule, namely that tasks that depend on another task should go from blocked to
-not done as soon as the dependent task is marked as done. This is another rule
-that the author of the mobile application have to implement, otherwise we can
-run into further data conflicts.
+implement the rule that the time of completion field should be set when a task
+is done it might break our application. But maybe they implement the only rule
+we had in place and everything was fine. Now consider that we add a new state
+along with done and not done called blocking along with a field of which task
+this task is blocked by. If we simply add this into our application the mobile
+application might break because there are now unexpected fields. And we've just
+added a new rule, namely that tasks that depend on another task should go from
+blocked to not done as soon as the dependent task is marked as done. This is
+another rule that the author of the mobile application have to implement,
+otherwise we can run into further data conflicts.
 
 As you can imagine this scenario happens quite often as data is exchanged
-between applications. It makes the experience of our applications segmented, and
-it causes headache when we want to add features or automatic transitions to our
-data formats. This is the problem that data.vm tries to solve. Instead of storing
-data as a simple data format with external rules we store both data and rules in
-the same format. In order to read data out of the file you call a function to
-read data, and in order to change it you call procedures to change things. The
-specific list of available procedures depends entirely on the format. In order to
-make every client support every feature of the format the VM required to run this
-is designed to be as simple yet flexible as absolutely possible. And the VM
-itself can be implemented completely independent of the specific format.
+between applications. It makes the experience of our applications segmented,
+and it causes headache when we want to add features or automatic transitions to
+our data formats. This is the problem that data.vm tries to solve. Instead of
+storing data as a simple data format with external rules we store both data and
+rules in the same format. In order to read data out of the file you call a
+function to read data, and in order to change it you call procedures to change
+things. The specific list of available procedures depends entirely on the
+format. In order to make every client support every feature of the format the
+VM required to run this is designed to be as simple yet flexible as absolutely
+possible. And the VM itself can be implemented completely independent of the
+specific format.
 
 ## Basic design
 - The base unit is not a byte, but a variable size number
@@ -62,7 +63,7 @@ ZigZag encoded. That is 0 is stored as 0, -1 is stored as 1, 1 is stored as 2,
 etc. The encoding is a run-length based one where the first byte stores
 trailing 0 bits with how many more bytes should be read. Floating point numbers
 are stored as two consecutive signed numbers, the base number, and the power of
-ten to raise the number two. This means that 3.14 will be stored as the numbers
+ten to raise the number to. This means that 3.14 will be stored as the numbers
 314 and -2 and -31400 will be stored as -314 and 2.
 
 ### Instructions
@@ -80,10 +81,10 @@ question.
 Once the procedures to create hashes and parse numbers are implemented then the
 actual execution of programs can be done. The VM needs a couple simple things to
 function, namely a table of chunks to do look ups in, an execution pointer, and
-a some data element pointers. The execution pointer is simply a chunk and the
+some data element pointers. The execution pointer is simply a chunk and the
 current position within the chunk, this is to decide what to execute next. The
-data element pointers are numbered 0 through 127 and will appear in various
-operations. Then are essentially the same as the execution pointer, simply a
+data element pointers are numbered 0 through 63 and will appear in various
+operations. They are essentially the same as the execution pointer, simply a
 pair of chunk and position in the chunk. The execution pointer is henceforth
 known as EP and the data element pointers are referred to as registers.
 

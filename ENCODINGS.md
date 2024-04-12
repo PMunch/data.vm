@@ -56,7 +56,7 @@ Properties:
   includes. This means skipping character by character is easy.
 - Not able to store more than 32-bits, and post-2003 the official spec only
   requires 21-bits so it might be hard to reuse an existing encoder.
-- Self-synchronising secrifies a bit of efficiency. 32 bits requires 6 bytes.
+- Self-synchronising sacrifies a bit of efficiency. 32 bits requires 6 bytes.
 
 Slices:
 1 byte: 0 - 127
@@ -220,7 +220,7 @@ before. So the requirements of such a system is still an open question. The
 SQLite encoding is enticing as it would be possible to have quite a bit larger
 instruction set (the current design has all op-codes defined to fit in a single
 byte). At the same time, maybe keeping the amount of instructions low is a good
-thing for simplicities sake. The idea behind Dlugosz' algorithm is also very
+thing for simplicity sake. The idea behind Dlugosz' algorithm is also very
 interesting as it seems to keep commonly stored entities in mind in its design.
 This is certainly something which could be kept in mind if a special algorithm
 is to be designed for this purpose (chunks for example are identified by the
@@ -231,9 +231,9 @@ sub-chunk addressing has to be done by skipping through the records you should
 never run into a case where you try to e.g. add something to the middle of a
 number. This is also meant for data storage, not data transfer, so picking up a
 stream mid-sending isn't much of a concern. That being said it also means that
-there is no way to go backwards though the numbers, as there is no way to know
+there is no way to go backwards through the numbers, as there is no way to know
 where the start of the previous number is. For these reasons the choice will
-likely fall on either Rust vints, SQLite, Dlugosz', or a custom algorithm.  Of
+likely fall on either Rust vints, SQLite, Dlugosz', or a custom algorithm. Of
 course out of these SQLite is the one which is the most tried and tested, and
 probably the one which has the most existing implementations to steal for
 anyone wanting to implement this VM. Nim for example has a module called varint
