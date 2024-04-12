@@ -1,8 +1,10 @@
 Seven bits total, fits in a single byte using variable length encoding
-First bit, advance register 1=yes, 0=no (Maybe move this into the register number instead? Lowers the amount of available registers to 64, but means that registers can be individually advanced or not and handling for the procedure register doesn't have to be special)
 Three bits, instruction type
-Three bits, instruction subtype
+Four bits, instruction subtype
 Arguments are listed alphabetically, A, B, C, etc.
+Arguments are always a registry to read that kind of data from. This should be
+read as a signed value, the register being the absolute value of the number read,
+if the value is negative the register should not be advanced.
 000
 JUMP
 ---000

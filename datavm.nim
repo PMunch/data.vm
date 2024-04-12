@@ -127,55 +127,53 @@ proc followChunk(register: var Register, address: SomeInteger = randomAddr()) =
 import strutils
 
 proc executeProcedure(x: string, args: var seq[byte]) =
-  var regs = newSeq[Register](127)
+  var regs = newSeq[Register](63)
   regs[0] = Register(chunk: memory[atomize(x)])
   const procReg = 0.uint
   regs[1].chunk = new Chunk
   regs[1].chunk[] = args
   while regs[procReg].position < regs[procReg].chunk[].len:
-    let
-      cmd = regs[procReg].readNumber(signed = false)
-      reset = (cmd and 0b0100_0000) == 0
-    template number(register: uint): untyped =
+    let cmd = regs[procReg].readNumber(signed = false)
+    template number(register: int): untyped =
       let r = register
-      regs[r].readNumber(reset and r != 0)
-    template unsigned(register: uint): untyped =
+      regs[abs(r)].readNumber(r < 0)
+    template unsigned(register: int): untyped =
       let r = register
-      regs[r].readUnsigned(reset and r != 0)
-    template string(register: uint): untyped =
+      regs[abs(r)].readUnsigned(r < 0)
+    template string(register: int): untyped =
       let r = register
-      regs[r].readString(reset and r != 0)
+      regs[abs(r)].readString(r < 0)
     echo "Executing command: ", cmd.toBin(8)
-    case (cmd and 0b0011_1000) shr 3:
+    case (cmd and 0b0_111_0000) shr 3:
     of 0b000: # Jump instructions
       var
         jump = false
         target: uint32
         position = 0
-      case cmd and 0b0000_0111:
-      of 0b000:
-        let reg = procReg.unsigned
+      case cmd and 0b0_000_1111:
+      of 0b0000:
+        let reg = abs(procReg.signed)
         regs[reg].position = regs[reg].chunk[].len
-      of 0b001:
+      of 0b0001:
         jump = true
         target = procReg.unsigned.uint32
         position = procReg.unsigned.int
-      of 0b010..0b111:
+      of 0b0010..0b1111:
         let
           a = procReg.unsigned.number
           b = procReg.unsigned.number
         target = procReg.unsigned.uint32
-        case cmd and 0b0000_0111:
-        of 0b010:
+        case cmd and 0b0_000_1111:
+        of 0b0010:
           if a == b: jump = true
-        of 0b011:
+        of 0b0011:
           if a != b: jump = true
-        of 0b100:
+        of 0b0100:
           if a < b: jump = true
-        of 0b101:
+        of 0b0101:
           if a > b: jump = true
-        of 0b110: discard # floats
-        of 0b111: discard # floats
+        of 0b0110: discard # floats
+        of 0b0111: discard # floats
         else: discard
       else: discard
       if jump:
